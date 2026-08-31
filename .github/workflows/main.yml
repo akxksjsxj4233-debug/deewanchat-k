@@ -1,0 +1,185 @@
+
+from kivy.app import App
+from kivy.core.text import LabelBase
+from kivy.metrics import dp
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.graphics import Color, RoundedRectangle
+from kivy.utils import get_color_from_hex
+
+# Arabic shaping
+try:
+    import arabic_reshaper
+    from bidi.algorithm import get_display
+
+    def ar(text):
+        return get_display(arabic_reshaper.reshape(text))
+except Exception:
+    def ar(text):
+        return text
+
+# Find an Arabic-capable Android font
+FONT = None
+for path in (
+    "/system/fonts/NotoNaskhArabic-Regular.ttf",
+    "/system/fonts/NotoSansArabic-Regular.ttf",
+    "/system/fonts/DroidNaskh-Regular.ttf",
+):
+    if Path(path).exists():
+        FONT = path
+        break
+
+if FONT:
+    LabelBase.register(name="ArabicFont", fn_regular=FONT)
+
+FONT_NAME = "ArabicFont" if FONT else "Roboto"
+
+BG = get_color_from_hex("#0B0F14")
+CARD = get_color_from_hex("#151B23")
+TEXT = get_color_from_hex("#FFFFFF")
+MUTED = get_color_from_hex("#9CA6B5")
+ACCENT = get_color_from_hex("#5CE18A")
+
+
+class CardButton(Button):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.background_normal = ""
+        self.background_down = ""
+        self.background_color = (0, 0, 0, 0)
+        self.color = TEXT
+        self.font_name = FONT_NAME
+        self.font_size = dp(18)
+        with self.canvas.before:
+            Color(*CARD)
+            self.bg = RoundedRectangle(
+                pos=self.pos, size=self.size, radius=[dp(18)]
+            )
+        self.bind(pos=self._sync, size=self._sync)
+
+    def _sync(self, *_):
+        self.bg.pos = self.pos
+        self.bg.size = self.size
+
+
+class DrakonChat(App):
+    def build(self):
+        self.title = "Drakon Chat"
+
+        root = BoxLayout(
+            orientation="vertical",
+            padding=[dp(16), dp(18), dp(16), dp(10)],
+            spacing=dp(12),
+        )
+        root.canvas.before.add(Color(*BG))
+        from kivy.graphics import Rectangle
+        root.canvas.before.add(Rectangle(pos=root.pos, size=root.size))
+        root.bind(pos=self._bg_sync, size=self._bg_sync)
+
+        # Header
+        header = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=dp(70),
+            spacing=dp(10),
+        )
+
+        avatar = Label(
+            text="A",
+            font_name=FONT_NAME,
+            font_size=dp(28),
+            size_hint_x=None,
+            width=dp(58),
+            color=TEXT,
+        )
+        header.add_widget(avatar)
+
+        info = BoxLayout(orientation="vertical")
+        info.add_widget(Label(
+            text="أتاش",
+            font_name=FONT_NAME,
+            font_size=dp(21),
+            color=TEXT,
+            halign="right",
+            valign="middle",
+        ))
+        info.add_widget(Label(
+            text=ar("المستوى 1"),
+            font_name=FONT_NAME,
+            font_size=dp(13),
+            color=MUTED,
+            halign="right",
+            valign="middle",
+        ))
+        header.add_widget(info)
+
+        coins = Button(
+            text=ar("العملات\n0"),
+            font_name=FONT_NAME,
+            font_size=dp(14),
+            color=TEXT,
+            background_normal="",
+            background_color=get_color_from_hex("#202A35"),
+            size_hint_x=None,
+            width=dp(95),
+        )
+        header.add_widget(coins)
+        root.add_widget(header)
+
+        # Welcome
+        root.add_widget(Label(
+            text=ar("أهلاً بك في Drakon Chat"),
+            font_name=FONT_NAME,
+            font_size=dp(22),
+            color=TEXT,
+            size_hint_y=None,
+            height=dp(48),
+            halign="right",
+        ))
+
+        # Main actions
+        for title in (
+            "VIP",
+            "الأصدقاء",
+            "الرسائل",
+            "الهدايا",
+            "الملف الشخصي",
+        ):
+            btn = CardButton(
+                text=ar(title),
+                size_hint_y=None,
+                height=dp(62),
+            )
+            root.add_widget(btn)
+
+        # Bottom navigation
+        root.add_widget(Label(size_hint_y=1))
+
+        nav = BoxLayout(
+            size_hint_y=None,
+            height=dp(62),
+            spacing=dp(6),
+        )
+
+        for title in ("الرئيسية", "الأصدقاء", "الرسائل", "الملف"):
+            nav.add_widget(Button(
+                text=ar(title),
+                font_name=FONT_NAME,
+                font_size=dp(13),
+                color=TEXT,
+                background_normal="",
+                background_color=CARD,
+            ))
+
+        root.add_widget(nav)
+        return root
+
+    def _bg_sync(self, widget, *_):
+        for instruction in widget.canvas.before.children:
+            if instruction.__class__.__name__ == "Rectangle":
+                instruction.pos = widget.pos
+                instruction.size = widget.size
+
+
+DrakonChat().run()
